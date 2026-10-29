@@ -1,0 +1,31 @@
+---
+title: "Project Proposal: [working title]"
+author: "Group N: Member 1, Member 2, Member 3"
+date: "STAT 507, Autumn 2026 (due Mon Nov 2)"
+output:
+  pdf_document:
+    toc: false
+fontsize: 12pt
+geometry: margin=1in
+header-includes:
+  - \usepackage{fvextra}
+  - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+---
+
+<!-- One page. Graded out of 10 (see Project Grading Rubric). -->
+
+## Research question and estimand (3 pts)
+
+<!-- The question in one sentence. The estimand as a population quantity in a named target population. -->
+
+## Data source and access (2 pts)
+
+<!-- Dataset name, where it comes from, whether you have it in hand, sample size, the outcome and main predictors. -->
+
+## First pass at the sampling mechanism (4 pts)
+
+<!-- One paragraph: how did units enter the data (eligibility, selection, response, missingness)? Which course mechanism does it resemble? What is the one threat you are most worried about? -->
+
+## Group and logistics (1 pt)
+
+<!-- Members; confirm the roster entry; one sentence on who does what. -->
