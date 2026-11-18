@@ -1,0 +1,78 @@
+---
+title: "507 Project code"
+author: "Yizhou Li"
+date: "2026-11-18"
+output:
+  pdf_document:
+    toc: false
+  html_document:
+    toc: false
+    theme: flatly
+    highlight: tango
+subtitle: "STAT 507, Autumn 2026 | 30 points"
+header-includes:
+  - \usepackage{fvextra}
+  - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+---
+
+## Data Load and summary
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(performance)
+library(patchwork)
+library(emmeans)
+library(ggeffects)
+library(camerondata)
+
+# Load the randhealth dataset
+data(randhealth)
+
+
+
+
+
+```
+
+
+## Fit model
+```{r}
+pois_mod <- glm(
+  mdvis ~ coins + income + xage + female + educdec + black + offset(log(time)),
+  family = poisson(link = "log"),
+  data = subset(randhealth, time > 0)
+)
+
+nb_mod <- MASS::glm.nb(
+  mdvis ~ coins + income + xage + female + educdec + black + offset(log(time)),
+  data = subset(randhealth, time > 0)
+)
+
+summary(pois_mod)
+summary(nb_mod)
+```
+
+## accessment
+# Test zero inflation to see if zero inflation model is needed
+```{r}
+
+# TestZeroINFLATION PACKAGE
+
+testZeroInflation(nb_model_camera)
+
+#
+
+obsZeros <- sum(nb_model_camera$model$cam_count==0)
+numZeros <- rep(NA, 1000)
+for(i in 1:1000){
+numZeros[i] <- sum(simulate(nb_model_camera)==0)
+}
+1-mean(numZeros <= obsZeros)
+
+
+
+
+```
+
+
