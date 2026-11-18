@@ -32,6 +32,11 @@ data(randhealth)
 
 
 
+## Part 1: Research Question and Estimand
+The question, the target population, the estimand as a population quantity, and why that estimand answers the question.
+
+## Part 2: Sampling Mechanism
+Eligibility, selection or assignment, measurement, and missingness, each from the dataset's documentation; the mechanism named in course terms; a statement of which estimands are reachable for which population; design variables identified if present.
 
 ```
 
