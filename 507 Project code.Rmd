@@ -33,8 +33,25 @@ data(randhealth)
 
 
 
+
+
 ```
 
+
+# dataset summary
+
+```{r}
+# double check this
+
+summary(randhealth)
+```
+```{r}
+tibble(
+  Missing_Count = colSums(is.na(randhealth)),
+  Missing_Percent = round(colSums(is.na(randhealth)) / nrow(randhealth) * 100, 2)
+)
+
+```
 
 ## Fit model
 ```{r}
@@ -53,26 +70,119 @@ summary(pois_mod)
 summary(nb_mod)
 ```
 
-## accessment
+## Assessment
+# overdisprsion test
+
+```{r overdisp check1, echo=TRUE}
+round(c(deviance_ratio = deviance(nb_mod) / df.residual(nb_mod),
+        pearson_ratio  = sum(resid(nb_mod, type = "pearson")^2) / df.residual(nb_mod)), 4)
+```
 # Test zero inflation to see if zero inflation model is needed
-```{r}
 
-# TestZeroINFLATION PACKAGE
 
-testZeroInflation(nb_model_camera)
-
-#
-
-obsZeros <- sum(nb_model_camera$model$cam_count==0)
-numZeros <- rep(NA, 1000)
-for(i in 1:1000){
-numZeros[i] <- sum(simulate(nb_model_camera)==0)
+```{r check 2}
+n_sims <- 500; n <- nrow(randhealth)
+zero_p <- zero_nb <- max_p <- max_nb <- numeric(n_sims) # one value per simulated dataset
+for (s in 1:n_sims) {
+y_p <- rpois(n, lambda = fitted(pois_mod)) # a dataset from the Poisson fit
+y_nb <- rnbinom(n, mu = fitted(nb_mod), size = nb_mod$theta) # one from the negative binomial fit
+zero_p[s] <- mean(y_p == 0); max_p[s] <- max(y_p)
+zero_nb[s] <- mean(y_nb == 0); max_nb[s] <- max(y_nb)
 }
-1-mean(numZeros <= obsZeros)
+round(rbind(data = c(prop_zero = mean(randhealth$y == 0), max = max(randhealth$y)),
+poisson = c(mean(zero_p), mean(max_p)), negbin = c(mean(zero_nb), mean(max_nb))), 4)
 
+
+```
+
+
+```{r check3, fig.width=9, fig.height=3.3, out.width="92%"}
+
+# we used square root of n as the bin size
+binned <- function(x, r, m =  142) {          # average residuals in bins of x, cut at its quantiles
+  b <- cut(x, unique(quantile(x, 0:m / m)), include.lowest = TRUE)   # tied values stay in one bin
+  data.frame(x = tapply(x, b, mean), r = tapply(r, b, mean),
+             se = tapply(r, b, function(z) sd(z) / sqrt(length(z))))
+}
+binned_plot <- function(x, r, xlab, xlim = NULL, ylim = NULL) {   # drawn as arm::binnedplot does
+    # Dynamically calculate ylim if not provided by the user
+  
+  bb <- binned(x, r)
+  
+  if (is.null(ylim)) {
+    # Calculate the lowest and highest points including the error bars (± 2 * SE)
+    lower_bounds <- bb$r - 2 * bb$se
+    upper_bounds <- bb$r + 2 * bb$se
+    
+    # Pad the limits slightly (e.g., 10%) so points don't sit right on the edge
+    y_min <- min(c(lower_bounds, 0)) # Includes 0 so the baseline is visible
+    y_max <- max(upper_bounds)
+    padding <- (y_max - y_min) * 0.1
+    
+    ylim <- c(y_min - padding, y_max + padding)
+  }
+  
+
+  plot(bb$x, bb$r, type = "n", xlim = xlim, ylim = ylim, xlab = xlab, ylab = "average Pearson residual")
+  abline(0, 0, lty = 2)
+  lines(bb$x, bb$r + 2 * bb$se, col = "gray", lwd = 0.5); lines(bb$x, bb$r - 2 * bb$se, col = "gray", lwd = 0.5)
+  points(bb$x, bb$r, pch = 19, cex = 0.5)
+}
+r_nb <- resid(nb_mod, type = "pearson")
+par(mfrow = c(1, 2), mar = c(4, 4, 1, 1))
+binned_plot(fitted(nb_mod), r_nb, "fitted mean count", xlim = c(0, 6))
+# needs fixing
+# binned_plot(randhealth$, r_nb, "roach1 (pretreatment count)")
+
+```
+
+
+```{r check3}
+# our own tests
+
+# 
+DHARMa::testZeroInflation(pois_mod)
+DHARMa::testZeroInflation(nb_mod)
+
+
+
+# test for model fit in terms of performance
+performance(pois_mod)
+performance(nb_mod)
+
+# graph probability integral test and persona residual tests
+
+
+
+counts <- nb_mod$y
+lambdas <- fitted(nb_mod)
+rqr <- rep(NA, length(lambdas))
+for(i in 1:length(lambdas)){
+  ai <- ppois(counts[i]-1, lambda=lambdas[i])
+  bi <- ppois(counts[i], lambda=lambdas[i])
+  # this works even when ai=bi
+  ui <- ai + runif(1) * (bi - ai)
+  ui <- max(min(ui, 1-10^(-6)), 10^(-6))
+  rqr[i] <- qnorm(ui)
+}
+pearson.ratio <- sum(residuals(nb_mod, type = "pearson")^2) / nb_mod$df.residual
+p1 <- ggplot(data=tibble(lambda=lambdas,
+                         e=rqr)) + 
+  geom_hline(yintercept=0, linetype="dotted")+
+  geom_point(aes(x=lambda, y=e)) +
+  theme_bw()+
+  xlab(bquote(lambda))+
+  ylab("Randomized Quantile Residuals")
+p2 <- ggplot(data=tibble(e=rqr)) +
+  stat_qq(aes(sample=e)) +
+  stat_qq_line(aes(sample=e)) +
+  theme_bw() +
+  ggtitle(paste("Dispersion Ratio =", round(pearson.ratio, 4)))
+p1+p2
 
 
 
 ```
+
 
 
