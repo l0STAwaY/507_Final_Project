@@ -38,6 +38,10 @@ The question, the target population, the estimand as a population quantity, and 
 ## Part 2: Sampling Mechanism
 Eligibility, selection or assignment, measurement, and missingness, each from the dataset's documentation; the mechanism named in course terms; a statement of which estimands are reachable for which population; design variables identified if present.
 
+The sample consists of data from November 1974 and February 1977 persons and families enrolled in the Health Insurance Experiment from six cities: Dayton, Ohio; Seattle, Washington; Fitchburg, Massachussetts; Franklin County, Massachussetts; Charleston, South Carolina; and Georgetown County, South Carolina. These cities were chosen purposefully so as to encapsulate a range of city sizes, to cover a range of waiting times to appointment and physician per capita ratios, and to include both rural and urban sites. 
+
+
+
 ```
 
 
