@@ -461,21 +461,13 @@ oneway.test(attrition ~ factor(coins),
 
 ```{r}
 
-
-
-xtab <- as.table(
-  table(
-    Attrition = g1$attrition,
-    Coins = g1$coins
-  )
-)
-
 # both should work
-rstatix::pairwise_prop_test(
-  xtab,
-  p.adjust.method = "holm"
+pairwise.t.test(
+  x = g1$attrition,
+  g = factor(g1$coins),
+  p.adjust.method = "holm",
+  pool.sd = FALSE
 )
-
 # both should work just in case we want the exact test later
 # rstatix::pairwise_fisher_test(
 #   xtab,
