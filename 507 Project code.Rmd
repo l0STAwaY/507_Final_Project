@@ -40,10 +40,10 @@ randhealth %>% mutate(coins=factor(coins))
 
 
 ## Part 1: Research Question and Estimand
-The question, the target population, the estimand as a population quantity, and why that estimand answers the question.
+# The question, the target population, the estimand as a population quantity, and why that estimand answers the question.
 
 ## Part 2: Sampling Mechanism
-Eligibility, selection or assignment, measurement, and missingness, each from the dataset's documentation; the mechanism named in course terms; a statement of which estimands are reachable for which population; design variables identified if present.
+# Eligibility, selection or assignment, measurement, and missingness, each from the dataset's documentation; the mechanism named in course terms; a statement of which estimands are reachable for which population; design variables identified if present.
 
 
 
@@ -54,9 +54,9 @@ Eligibility, selection or assignment, measurement, and missingness, each from th
 ```{r}
 # double check this
 summary(randhealth)
-
-factor(randhealth$coins)
 ```
+
+
 ```{r}
 # na needs fixing format in dataset
 tibble(
@@ -86,58 +86,11 @@ part %>% group_by(first_year) %>% summarise(n=n())
 part %>% group_by(skipped_year) %>% summarise(n=n())
 ```
 
-$$
-
-this is problematic
-1, 2, 3	Completed through year 3
-1, 2	Potential attrition before year 3
-1, 3	Missed year 2 but returned; not attrition by year 3
-2, 3	Entered later; completed through year 3
-2	Potential attrition before year 3
-1, 2, 4	Missed year 3; returned in year 4
-$$
-
-```{r}
-# do they participate every year?
-
-# who existed and retunred
-part <- part %>%
-  mutate(
-    skipped_year = last_year - first_year + 1 > n_years
-  )
-
-part %>%
-  mutate(
-    skipped_year = last_year - first_year + 1 > years_participated
-  )
 
 
-```
-
-```{r}
-# 1. Create dummy health data
 
 
-# 2. Calculate attrition relative to the baseline year (Cumulative Attrition)
-baseline_count <- length(unique(randhealth$zper[randhealth$year == min(randhealth$year)]))
-
-attrition_baseline <- randhealth %>%
-  group_by(year) %>%
-  summarise(
-    active_participants = n_distinct(zper),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    lost_since_baseline = baseline_count - active_participants,
-    attrition_rate_pct = (lost_since_baseline / baseline_count) * 100
-  )
-
-print(attrition_baseline)
-
-
-```
-
-We are trying to test wether treament affect attrition
+We are trying to test wether treatment affect attrition
 
 he general formula is the weighted average of the attrition probabilities under the two possible contract lengths:
 
@@ -243,17 +196,7 @@ $$
 H_0:p_1=p_2=p_3=p_4=p_5
 H_A: \text{At least one treatment group has a different attrition rate.}
 
-```{r}
-g1 %>% count(history, sort = TRUE)
 
-g1 %>%
-  group_by(coins) %>%
-  summarise(
-    mean_attrition = mean(attrition, na.rm = TRUE),
-    sd_attrition = sd(attrition, na.rm = TRUE),
-    n = n()
-  )
-```
 
 Our data confirms that random absences occur because some participants have gaps followed by returns, but it does not establish that the absence probability $p$ is constant across years or that absences are independent. The two-explanation model of random absence or permanent attrition is consistent with the observed histories,that we only observe these two cases in our data. but we cannot rule out other causes of missingness or distinguish permanent attrition from repeated random absence.
 
@@ -390,6 +333,17 @@ round(c(
 ```
 
 
+```{r}
+g1 %>% count(history, sort = TRUE)
+
+g1 %>%
+  group_by(coins) %>%
+  summarise(
+    mean_attrition = mean(attrition, na.rm = TRUE),
+    sd_attrition = sd(attrition, na.rm = TRUE),
+    n = n()
+  )
+```
 
 
 ```{r}
@@ -401,6 +355,8 @@ pairs <- combn(groups, 2)
 
 M <- 5000
 results <- tibble()
+
+
 
 for (i in 1:ncol(pairs)) {
   # treatment A
@@ -597,7 +553,7 @@ binned_plot(fitted(nb_mod), r_nb, "fitted mean count", xlim = c(0, 6))
 ```
 
 
-```{r check3}
+```{r check 4}
 # our own tests
 
 # 
