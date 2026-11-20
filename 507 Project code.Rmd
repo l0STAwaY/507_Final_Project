@@ -25,6 +25,7 @@ library(patchwork)
 library(emmeans)
 library(ggeffects)
 library(camerondata)
+library(haven)
 
 
 # Load the randhealth dataset
@@ -32,6 +33,10 @@ data(randhealth)
 
 # coins is a factor
 randhealth %>% mutate(coins=factor(coins)) 
+
+
+# # THIS DATA IS NO USE
+# ds91 <- read_dta("06439-0091-Data.dta")
 
 
 ## Part 1: Research Question and Estimand
@@ -134,11 +139,132 @@ print(attrition_baseline)
 
 We are trying to test wether treament affect attrition
 
+he general formula is the weighted average of the attrition probabilities under the two possible contract lengths:
+
+
+### Derivation of the Attrition Probability
+
+
+
+Since a participant must have either a 3-year or 5-year contract, we can partition the probability of attrition into two cases:
 
 $$
+\begin{aligned}
+P(A\mid H)
+={}&P(A\cap C_3\mid H)\\
+&+P(A\cap C_5\mid H)
+\end{aligned}
+$$
+
+
+Using the multiplication rule,
+
+$$
+P(X\cap Y\mid H)
+=P(X\mid Y,H)P(Y\mid H)
+$$
+
+we obtain:
+
+$$
+\begin{aligned}
+P(A\mid H)
+={}&P(A\mid C_3,H)P(C_3\mid H)\\
+&+P(A\mid C_5,H)P(C_5\mid H)
+\end{aligned}
+$$
+
+
+The probability of attrition is one minus the probability of no attrition:
+
+$$
+P(A\mid C_3,H)
+=1-P(A^c\mid C_3,H)
+$$
+
+$$
+P(A\mid C_5,H)
+=1-P(A^c\mid C_5,H)
+$$
+
+Let \(p\) denote the probability of random non-observation in one eligible year.  other words probability \(p\), the participant is randomly absent but has not permanently dropped out. It assumes that the only way a participant can remain in the study but not appear in any of the remaining years is through random absence in every single year. Assuming random non-observation is independent across eligible years, the probability of being randomly missed in all remaining eligible years is:
+
+$$
+P(A^c\mid C_3,H)=p^{k_3}
+$$
+
+$$
+P(A^c\mid C_5,H)=p^{k_5}
+$$
+
+where $k_3$ and $k_5$ represent the number of eligible years remaining under each contract type.
+
+
+Substituting the complement-rule expressions into the multiplication-rule expression gives:
+
+$$
+\begin{aligned}
+P(A\mid H)
+={}&P(C_3\mid H)(1-p^{k_3})\\
+&+P(C_5\mid H)(1-p^{k_5})
+\end{aligned}
+$$
+
+Therefore, the final attrition probability formula is:
+
+$$
+\boxed{
+P(A\mid H)
+=
+P(C=3\mid H)(1-p^{k_3})
++
+P(C=5\mid H)(1-p^{k_5})
+}
+$$
+
+This formula calculates the probability of attrition conditional on the participant's observed history by taking a weighted average of the attrition probabilities under the two possible contract lengths.
+
+**Model assumptions:** Assumption	What we need
+1. Eligibility	Correctly identify years participants were eligible
+2. Two explanations:	Missingness is either temporary randomly absence or permanent attrition
+3. Independence	Temporary: absences are independent across years
+4. Constant probability:	Temporary absence probability is approximately constant
+5. Contract weights	70%/30% are appropriate conditional probabilities
+
+$$
+P(A\mid H)
+=
+P(C=3\mid H)(1-p^{k_3})
++
+P(C=5\mid H)(1-p^{k_5})
+$$
+
+
 H_0:p_1=p_2=p_3=p_4=p_5
 H_A: \text{At least one treatment group has a different attrition rate.}
-$$
+
+```{r}
+g1 %>% count(history, sort = TRUE)
+
+g1 %>%
+  group_by(coins) %>%
+  summarise(
+    mean_attrition = mean(attrition, na.rm = TRUE),
+    sd_attrition = sd(attrition, na.rm = TRUE),
+    n = n()
+  )
+```
+
+Our data confirms that random absences occur because some participants have gaps followed by returns, but it does not establish that the absence probability $p$ is constant across years or that absences are independent. The two-explanation model of random absence or permanent attrition is consistent with the observed histories,that we only observe these two cases in our data. but we cannot rule out other causes of missingness or distinguish permanent attrition from repeated random absence.
+
+
+We assume a common random-absence probability (p) across study years. In our data, we observe only 12 participants with a missing year followed by a return. These observed absences are distributed unevenly across years, with 9 occurring in year 2, 1 in year 3, and 2 in year 4. Given the small number of observed events, estimating a separate absence probability for each year would produce unstable estimates. Therefore, we pool the observed missingness patterns to estimate one common probability (p), allowing us to use the available information more efficiently. However, we do not have sufficient data to confirm or reject the assumption that the underlying random-absence probability remains constant across years. We therefore treat constant (p) as a simplifying modeling assumption rather than an empirically verified property of the data.
+
+Here, in my personal opinion, I would therefore recommend a sensitivity analysis: calculate the attrition estimates using a few plausible values of \(p\), such as \(0.02\), \(0.05\), and \(0.10\), and see how much the conclusions change.
+
+
+what we are doing is: Whether estimated attrition probabilities differ across coinsurance groups.
+
 
 ```{r}
 set.seed(2026)
@@ -154,27 +280,77 @@ set.seed(2026)
 
 #  until year 3
 # this is more reasonable
-# since after year 3 we dont know who is dropped by experiemental design who is not
 g1 <- randhealth %>%
-  filter(year <= 3) %>%
   group_by(zper, coins) %>%
   summarise(
-    last_year = max(year),
-    .groups = "drop"
-  ) %>%
+    y1 = any(year == 1),
+    y2 = any(year == 2),
+    y3 = any(year == 3),
+    y4 = any(year == 4),
+    y5 = any(year == 5),
+  ) %>% ungroup() %>%
   mutate(
-    attrition = as.numeric(last_year < 3)
+    history = paste0(
+      as.integer(y1),
+      as.integer(y2),
+      as.integer(y3),
+      as.integer(y4),
+      as.integer(y5)
+    ),
+    # First and last observed years
+    first_year = case_when(
+      y1 ~ 1L,
+      y2 ~ 2L,
+      y3 ~ 3L,
+      y4 ~ 4L,
+      y5 ~ 5L,
+      TRUE ~ NA_integer_
+    ),
+
+    last_year = case_when(
+      y5 ~ 5L,
+      y4 ~ 4L,
+      y3 ~ 3L,
+      y2 ~ 2L,
+      y1 ~ 1L,
+      TRUE ~ NA_integer_
+    ),
+
+    # Count years between first and last observations, 1L is integer
+    years_between = last_year - first_year + 1L,
+    observed_between = y1 + y2 + y3 + y4 + y5, # how many actyakky observed
+    missing_between = years_between - observed_between
   )
 
-g1 %>%
-  group_by(coins) %>%
-  summarise(
-    total = n(),
-    attrition = sum(attrition == 1),
-    no_attrition = sum(attrition == 0),
-    attrition_rate = mean(attrition),
-    .groups = "drop"
+# Estimate temporary absence probability
+p_hat <- with(
+  g1,
+  sum(missing_between, na.rm = TRUE) /
+    sum(years_between, na.rm = TRUE)
+)
+
+p_hat
+
+# Calculate attrition scores
+g1 <- g1 %>%
+  mutate(
+    # Remaining years under each contract
+    k3 = pmax(3L - last_year, 0L),
+    k5 = pmax(5L - last_year, 0L),
+
+    # Attrition scores using estimated p
+    attrition_3 = 1 - p_hat^k3,
+    attrition_5 = 1 - p_hat^k5,
+
+    # Combine contract possibilities
+    attrition = case_when(
+      is.na(last_year) ~ NA_real_,
+      y4 | y5 ~ attrition_5, # if y4 or y5 is true just give attrition 5 has prob 1
+      TRUE ~ 0.7 * attrition_3 + 0.3 * attrition_5
+    )
   )
+
+
 
 # calculates the maximum absolute difference between any coinsurance group's attrition rate and the overall average attrition rate.
 # question Are the attrition rates across coinsurance groups more different from the overall attrition rate than we would expect by random assignment?
@@ -212,6 +388,8 @@ round(c(
 
 
 ```
+
+
 
 
 ```{r}
@@ -271,9 +449,14 @@ results
 ```
 
 
+
 ```{r}
 # chi square test also work
-chisq.test(table(g1$coins, g1$attrition))
+# The average estimated attrition probability|on our observation is equal across all five coinsurance groups.
+oneway.test(attrition ~ factor(coins),
+            data = g1,
+            var.equal = FALSE)
+# or kruskal wliis
 ```
 
 ```{r}
@@ -301,6 +484,9 @@ rstatix::pairwise_prop_test(
 
 ```
 
+
+
+
 ## Fit model
 ```{r}
 pois_mod <- glm(
@@ -316,7 +502,41 @@ nb_mod <- MASS::glm.nb(
 
 summary(pois_mod)
 summary(nb_mod)
+
 ```
+
+
+
+
+
+Among participants with the same income, age, gender, education, and race, we estimate that a one-percentage-point increase in coinsurance is associated with the expected rate of mental doctor visits being multiplied by (e^{-0.003295}=0.9967).
+
+The 95% confidence interval for this rate ratio is calculated by exponentiating both endpoints of the confidence interval for the coinsurance coefficient:
+
+
+$$
+\left[
+e^{-0.003295-1.96(0.0002571)},
+e^{-0.003295+1.96(0.0002571)}
+\right]
+\approx [0.9962,;0.9972].
+$$
+
+Thus, we are 95% confident that a one-percentage-point increase in coinsurance is associated with a mental doctor visit rate between 0.9962 and 0.9972 times the previous rate, holding the other variables constant.
+
+Since (e.g., 0, 25, 50, 95, 100) is our coinsurance categories. For example, when coinsurance increases from 0% to 25%, the estimated rate ratio is
+
+$$
+e^{-0.003295(25)} \approx 0.9209.
+$$
+
+This means that the expected rate of mental doctor visits is approximately 7.91% lower for the 25% coinsurance group than for the 0% coinsurance group, holding the other variables constant.
+
+
+This negative association is reasonable because higher coinsurance rates are associated with higher out-of-pocket costs for patients, and participants in higher coinsurance categories tend to have fewer mental doctor visits.
+
+
+
 
 ## Assessment
 # overdisprsion test
