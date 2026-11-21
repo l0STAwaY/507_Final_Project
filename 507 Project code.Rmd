@@ -61,9 +61,9 @@ variables <- c(
 
 within_stats <- sapply(variables, function(v) {
 # double frame return vector single return dataframe
+
   
-  
-temp <- randhealth %>%
+  temp <- randhealth %>%
   group_by(zper) %>%
   summarise(
     var = var(.data[[v]], na.rm = TRUE),
@@ -607,19 +607,14 @@ binned_plot(fitted(nb_mod), r_nb, "fitted mean count", xlim = c(0, 6))
 ```{r check 4}
 # our own tests
 
-# 
 DHARMa::testZeroInflation(pois_mod)
 DHARMa::testZeroInflation(nb_mod)
-
-
 
 # test for model fit in terms of performance
 performance(pois_mod)
 performance(nb_mod)
 
 # graph probability integral test and persona residual tests
-
-
 
 counts <- nb_mod$y
 lambdas <- fitted(nb_mod)
