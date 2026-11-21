@@ -45,15 +45,99 @@ randhealth %>% mutate(coins=factor(coins))
 ## Part 2: Sampling Mechanism
 # Eligibility, selection or assignment, measurement, and missingness, each from the dataset's documentation; the mechanism named in course terms; a statement of which estimands are reachable for which population; design variables identified if present.
 
+# test per persona vraince
+
+
+variables <- c(
+  "mdvis", "coins", "income", "xage",
+  "female", "educdec", "black", "mdeoff", "pioff"
+)
+
+
+# .data[[]] syntax
+# Look inside the current data frame.
+# Find the column whose name is stored in v.
+# Return that column.
+
+within_stats <- sapply(variables, function(v) {
+# double frame return vector single return dataframe
+  
+  
+temp <- randhealth %>%
+  group_by(zper) %>%
+  summarise(
+    var = var(.data[[v]], na.rm = TRUE),
+    df = sum(!is.na(.data[[v]])) - 1,
+    .groups = "drop"
+  )
+
+sum(temp$var * temp$df, na.rm = TRUE) /
+  sum(temp$df[temp$df > 0], na.rm = TRUE)
+
+})
+
+tibble(
+  variable = variables,
+  within_person_variance = within_stats
+)
+
+
+## calculate the mean within each year
+
+ggplot(randhealth, aes(x = year, y = mdvis, group = zper)) +
+  geom_line(alpha = 0.08, color = "darkgray") +
+  geom_line(
+    data = randhealth %>%
+      group_by(year) %>%
+      mutate(year_mean = mean(mdvis, na.rm = TRUE)),
+    aes(x = year, y = year_mean, group = 1),
+    color = "red",
+    linewidth = 1.2,
+    inherit.aes = FALSE
+  ) +
+  geom_point(
+    data = randhealth %>%
+      group_by(year) %>%
+      mutate(year_mean = mean(mdvis, na.rm = TRUE)),
+    aes(x = year, y = year_mean),
+    color = "red",
+    size = 3,
+    inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = randhealth %>%
+      group_by(year) %>%
+      mutate(year_mean = mean(mdvis, na.rm = TRUE)),
+    aes(x = year, y = year_mean,
+        label = round(year_mean, 2)),
+    color = "red",
+    vjust = -1,
+    inherit.aes = FALSE
+  ) +
+  labs(
+    title = "Medical Visits Over Time",
+    x = "Year",
+    y = "Number of Medical Visits"
+  ) +
+  theme_minimal()
+
+
+
+
+
 
 
 ```
 
 
+The yearly population means of medical visits remain relatively stable over the study period, at approximately 3 visits per year. Although the pooled within-person variance is 9.8, indicating considerable year-to-year variation in individual medical visits, averaging observations across years can smooth out temporary fluctuations and provide a more representative measure of each individual's typical medical utilization. Since the research objective is to compare typical medical utilization between treatment groups rather than examine changes over time, person-level averages are potentially appropriate. Furthermore, aggregating observations at the person level avoids treating repeated yearly observations from the same individual as independent observations in the regression. However, this approach comes at the cost of losing information about year-to-year changes and individual trends.
+
 
 ```{r}
 # double check this
 summary(randhealth)
+
+randhealth %>% group_by(coins) %>% summarise(n=n())
 ```
 
 
@@ -96,7 +180,6 @@ he general formula is the weighted average of the attrition probabilities under 
 
 
 ### Derivation of the Attrition Probability
-
 
 
 Since a participant must have either a 3-year or 5-year contract, we can partition the probability of attrition into two cases:
@@ -346,6 +429,7 @@ g1 %>%
 ```
 
 
+
 ```{r}
 set.seed(2026)
 
@@ -406,31 +490,8 @@ results
 
 
 
-```{r}
-# chi square test also work
-# The average estimated attrition probability|on our observation is equal across all five coinsurance groups.
-oneway.test(attrition ~ factor(coins),
-            data = g1,
-            var.equal = FALSE)
-# or kruskal wliis
-```
 
-```{r}
 
-# both should work
-pairwise.t.test(
-  x = g1$attrition,
-  g = factor(g1$coins),
-  p.adjust.method = "holm",
-  pool.sd = FALSE
-)
-# both should work just in case we want the exact test later
-# rstatix::pairwise_fisher_test(
-#   xtab,
-#   p.adjust.method = "holm"
-# )
-
-```
 
 
 
@@ -444,7 +505,7 @@ pois_mod <- glm(
 )
 
 nb_mod <- MASS::glm.nb(
-  mdvis ~ coins + income + xage + female + educdec + black + offset(log(time)),
+  mdvis ~ coins + income + xage + female + educdec + black +mdeoff  + pioff + offset(log(time)),
   data = randhealth
 )
 
@@ -467,7 +528,7 @@ $$
 e^{-0.003295-1.96(0.0002571)},
 e^{-0.003295+1.96(0.0002571)}
 \right]
-\approx [0.9962,;0.9972].
+\approx [0.9962,;0.9972]
 $$
 
 Thus, we are 95% confident that a one-percentage-point increase in coinsurance is associated with a mental doctor visit rate between 0.9962 and 0.9972 times the previous rate, holding the other variables constant.
