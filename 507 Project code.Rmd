@@ -132,6 +132,12 @@ ggplot(randhealth, aes(x = year, y = mdvis, group = zper)) +
 
 The yearly population means of medical visits remain relatively stable over the study period, at approximately 3 visits per year. Although the pooled within-person variance is 9.8, indicating considerable year-to-year variation in individual medical visits, averaging observations across years can smooth out temporary fluctuations and provide a more representative measure of each individual's typical medical utilization. Since the research objective is to compare typical medical utilization between treatment groups rather than examine changes over time, person-level averages are potentially appropriate. Furthermore, aggregating observations at the person level avoids treating repeated yearly observations from the same individual as independent observations in the regression. However, this approach comes at the cost of losing information about year-to-year changes and individual trends.
 
+```{r}
+# AVERAGEING THE DATA
+
+
+```
+
 
 ```{r}
 # double check this
