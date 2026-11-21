@@ -62,7 +62,7 @@ variables <- c(
 within_stats <- sapply(variables, function(v) {
 # double frame return vector single return dataframe
 
-  
+# group by assure apply function to each group output value for one
   temp <- randhealth %>%
   group_by(zper) %>%
   summarise(
@@ -70,6 +70,9 @@ within_stats <- sapply(variables, function(v) {
     df = sum(!is.na(.data[[v]])) - 1,
     .groups = "drop"
   )
+
+# the var varible calculates How much does person i's medical utilization vary across years?
+# this is pooled How much does medical utilization vary within individuals, pooling information across all individuals?
 sum(temp$var * temp$df, na.rm = TRUE) /
   sum(temp$df[temp$df > 0], na.rm = TRUE)
 
