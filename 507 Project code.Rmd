@@ -295,6 +295,7 @@ set.seed(2026)
 
 #  until year 3
 # this is more reasonable
+# this should be the same as grou_by zper since one treament per person but just a sanity check
 g1 <- randhealth %>%
   group_by(zper, coins) %>%
   summarise(
@@ -333,7 +334,8 @@ g1 <- randhealth %>%
 
     # Count years between first and last observations, 1L is integer
     years_between = last_year - first_year + 1L,
-    observed_between = y1 + y2 + y3 + y4 + y5, # how many actyakky observed
+    observed_between = y1 + y2 + y3 + y4 + y5, # how many actually observed
+    # first and last apperance any missing between would mean they returned and assume to be random missing
     missing_between = years_between - observed_between
   )
 
